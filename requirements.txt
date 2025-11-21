@@ -1,0 +1,29 @@
+# WiFi Security Auditor - Python Dependencies
+# For Termux on Android (Rooted)
+
+# Note: Most dependencies are system packages installed via pkg/apt
+# This file lists Python-specific requirements
+
+# Core Python (3.8+)
+# No additional Python packages required - tool uses standard library
+
+# System packages required (install via pkg in Termux):
+# - aircrack-ng (airmon-ng, airodump-ng, aircrack-ng, aireplay-ng)
+# - wireless-tools (iwconfig, iwlist)
+# - tsu (root access)
+# - python (3.8 or higher)
+
+# Installation commands for Termux:
+# pkg update && pkg upgrade -y
+# pkg install python aircrack-ng wireless-tools tsu -y
+
+# Optional tools for advanced usage:
+# - macchanger (MAC address spoofing)
+# - hashcat (GPU-accelerated password cracking)
+# - john (John the Ripper password cracker)
+# - reaver (WPS attacks)
+# - bully (WPS attacks)
+# - pixiewps (WPS pixie dust attack)
+
+# To install optional tools:
+# pkg install macchanger hashcat john reaver bully -y
