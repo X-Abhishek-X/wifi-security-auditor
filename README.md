@@ -119,11 +119,11 @@ pkg install tsu -y
 ```bash
 # Using git
 pkg install git -y
-git clone https://github.com/yourusername/wifi-security-auditor.git
+git clone https://github.com/X-Abhishek-X/wifi-security-auditor.git
 cd wifi-security-auditor
 
 # Or download directly
-curl -O https://raw.githubusercontent.com/yourusername/wifi-security-auditor/main/wifi_auditor.py
+curl -O https://raw.githubusercontent.com/X-Abhishek-X/wifi-security-auditor/main/wifi_auditor.py
 ```
 
 ### Step 5: Make Script Executable
