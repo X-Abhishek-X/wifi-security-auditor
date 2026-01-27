@@ -24,6 +24,7 @@ import sys
 import os
 import time
 import argparse
+import tempfile
 from datetime import datetime
 import re
 
@@ -49,6 +50,13 @@ class WiFiAuditor:
         self.target_essid = None
         self.wordlist_path = None
         
+    def validate_interface(self, interface):
+        """Validate interface name to prevent command injection"""
+        if not interface or not re.match(r'^[a-zA-Z0-9_-]+$', interface):
+            print(f"{Colors.FAIL}[!] Invalid interface name: {interface}{Colors.ENDC}")
+            return False
+        return True
+
     def print_banner(self):
         """Display tool banner and legal warning"""
         banner = f"""
@@ -150,14 +158,34 @@ Press Ctrl+C now if you do not agree.
             result = subprocess.run(['airmon-ng', 'start', interface], 
                                   capture_output=True, text=True)
             
-            # Monitor interface is usually interface + 'mon'
-            mon_interface = interface + 'mon'
+            output = result.stdout
+            mon_interface = None
             
-            # Verify monitor mode
-            verify = subprocess.run(['iwconfig', mon_interface], 
-                                  capture_output=True, text=True)
+            # Try to parse monitor interface from output
+            # Patterns: "monitor mode enabled on 'mon0'", "monitor mode enabled on mon0"
+            match = re.search(r"monitor mode.*?enabled.*?on\s+'?([a-zA-Z0-9_-]+)'?", output, re.IGNORECASE)
+            if match:
+                mon_interface = match.group(1)
+
+            # Verification and Fallbacks
+            if mon_interface:
+                verify = subprocess.run(['iwconfig', mon_interface], capture_output=True, text=True)
+                if 'Mode:Monitor' not in verify.stdout:
+                    mon_interface = None # False positive from regex or failed
             
-            if 'Mode:Monitor' in verify.stdout:
+            if not mon_interface:
+                # Check if original interface became monitor
+                verify = subprocess.run(['iwconfig', interface], capture_output=True, text=True)
+                if 'Mode:Monitor' in verify.stdout:
+                    mon_interface = interface
+
+            if not mon_interface:
+                 # Check common naming convention
+                verify = subprocess.run(['iwconfig', interface + 'mon'], capture_output=True, text=True)
+                if 'Mode:Monitor' in verify.stdout:
+                    mon_interface = interface + 'mon'
+
+            if mon_interface:
                 print(f"{Colors.OKGREEN}[✓] Monitor mode enabled: {mon_interface}{Colors.ENDC}")
                 return mon_interface
             else:
@@ -173,7 +201,7 @@ Press Ctrl+C now if you do not agree.
         print(f"\n{Colors.OKBLUE}[*] Scanning for WiFi networks...{Colors.ENDC}")
         print(f"{Colors.WARNING}[*] Press Ctrl+C to stop scanning{Colors.ENDC}\n")
         
-        output_file = f"/tmp/wifi_scan_{int(time.time())}"
+        output_file = os.path.join(tempfile.gettempdir(), f"wifi_scan_{int(time.time())}")
         
         try:
             # Start airodump-ng
@@ -248,7 +276,7 @@ Press Ctrl+C now if you do not agree.
         print(f"{Colors.WARNING}[*] Target: {bssid} on channel {channel}{Colors.ENDC}")
         print(f"{Colors.WARNING}[*] This may take several minutes...{Colors.ENDC}")
         
-        output_file = f"/tmp/handshake_{bssid.replace(':', '')}"
+        output_file = os.path.join(tempfile.gettempdir(), f"handshake_{bssid.replace(':', '')}")
         
         # Start capture
         print(f"\n{Colors.OKBLUE}[*] Starting packet capture...{Colors.ENDC}")
@@ -339,6 +367,8 @@ def main():
     
     # Get or detect interface
     if args.interface:
+        if not auditor.validate_interface(args.interface):
+            sys.exit(1)
         interface = args.interface
     else:
         interfaces = auditor.get_interfaces()
