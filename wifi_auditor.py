@@ -167,8 +167,11 @@ def parse_airodump_csv(path: str) -> list[dict]:
 
 
 def _detect_wps(line: str) -> bool:
-    """WPS-enabled APs show 'WPS' in the airodump CSV privacy/cipher fields."""
-    return bool(re.search(r"\bWPS\b", line, re.I))
+    """Check Privacy (col 5) and Cipher (col 6) only — avoids false positives from ESSID names."""
+    parts = [p.strip() for p in line.split(",")]
+    if len(parts) >= 7:
+        return bool(re.search(r"\bWPS\b", f"{parts[5]} {parts[6]}", re.I))
+    return False
 
 
 def enrich_vendors(networks: list[dict]) -> list[dict]:
@@ -195,13 +198,15 @@ def display_networks(networks: list[dict]):
     print(f"\n{'#':<4} {'ESSID':<28} {'BSSID':<18} {'CH':<4} {'dBm':<5} {'ENC':<8} {'WPS':<5} VENDOR")
     print("-" * 92)
     for i, n in enumerate(networks, 1):
-        wps_flag = RED("WPS") if n["wps"] else DIM(" — ")
-        enc      = YEL(n["encryption"]) if "WPA" in n["encryption"] else n["encryption"]
-        essid    = BOLD(n["essid"][:27])
+        wps_flag = RED(f"{'WPS':<5}") if n["wps"] else DIM(f"{' — ':<5}")
+        enc_raw  = n["encryption"]
+        enc      = YEL(f"{enc_raw:<8}") if "WPA" in enc_raw else f"{enc_raw:<8}"
+        essid    = BOLD(f"{n['essid'][:27]:<28}")
+        bssid    = CYN(f"{n['bssid']:<18}")
         vendor   = DIM(n["vendor"][:22]) if n["vendor"] else DIM("unknown")
         print(
-            f"{i:<4} {essid:<28} {CYN(n['bssid']):<18} {n['channel']:<4} "
-            f"{n['power']:<5} {enc:<8} {wps_flag:<5} {vendor}"
+            f"{i:<4} {essid} {bssid} {n['channel']:<4} "
+            f"{n['power']:<5} {enc} {wps_flag} {vendor}"
         )
 
 
